@@ -12,28 +12,14 @@ class SignUpScreen extends StatefulWidget {
 class _SignUpScreenState extends State<SignUpScreen>
     with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _passwordController = TextEditingController();
 
-  bool _obscurePassword = true;
   bool _isLoading = false;
-  String? _selectedState;
+  bool _isGoogleLoading = false;
 
   late AnimationController _entryController;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _fadeAnimation;
-
-  final List<String> _nigerianStates = [
-    'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi',
-    'Bayelsa', 'Benue', 'Borno', 'Cross River', 'Delta',
-    'Ebonyi', 'Edo', 'Ekiti', 'Enugu', 'FCT - Abuja',
-    'Gombe', 'Imo', 'Jigawa', 'Kaduna', 'Kano',
-    'Katsina', 'Kebbi', 'Kogi', 'Kwara', 'Lagos',
-    'Nasarawa', 'Niger', 'Ogun', 'Ondo', 'Osun',
-    'Oyo', 'Plateau', 'Rivers', 'Sokoto', 'Taraba',
-    'Yobe', 'Zamfara',
-  ];
 
   @override
   void initState() {
@@ -60,45 +46,74 @@ class _SignUpScreenState extends State<SignUpScreen>
 
   @override
   void dispose() {
-    _nameController.dispose();
     _phoneController.dispose();
-    _passwordController.dispose();
     _entryController.dispose();
     super.dispose();
   }
 
-  void _submit() async {
+  Future<void> _sendOtp() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedState == null) {
-      _showStateError();
-      return;
-    }
 
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 1500)); // temp
+
+    // TODO: Hook up FirebaseAuth.verifyPhoneNumber
+    // await FirebaseAuth.instance.verifyPhoneNumber(
+    //   phoneNumber: _formattedPhone,
+    //   verificationCompleted: (credential) async {
+    //     await FirebaseAuth.instance.signInWithCredential(credential);
+    //   },
+    //   verificationFailed: (e) {
+    //     _showSnack(e.message ?? 'Verification failed', isError: true);
+    //   },
+    //   codeSent: (verificationId, resendToken) {
+    //     Navigator.push(
+    //       context,
+    //       AppRoutes.generateOtpRoute(
+    //         phoneNumber: _formattedPhone,
+    //         verificationId: verificationId,
+    //       ),
+    //     );
+    //   },
+    //   codeAutoRetrievalTimeout: (verificationId) {},
+    // );
+
+    await Future.delayed(const Duration(seconds: 1)); // temp
+
+    if (!mounted) return;
     setState(() => _isLoading = false);
 
-    if (mounted) {
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        AppRoutes.home,
-        (route) => false,
-      );
-    }
+    Navigator.push(
+      context,
+      AppRoutes.generateOtpRoute(
+        phoneNumber: _phoneController.text.trim(),
+        verificationId: 'temp-verification-id',
+      ),
+    );
   }
 
-  void _showStateError() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Please select your state',
-          style: AppTextStyles.bodySmall.copyWith(color: Colors.white),
-        ),
-        backgroundColor: AppColors.danger,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        margin: const EdgeInsets.all(16),
-      ),
+  Future<void> _continueWithGoogle() async {
+    setState(() => _isGoogleLoading = true);
+
+    // TODO: Hook up GoogleSignIn + FirebaseAuth.signInWithCredential
+    // final googleUser = await GoogleSignIn().signIn();
+    // final googleAuth = await googleUser?.authentication;
+    // final credential = GoogleAuthProvider.credential(
+    //   accessToken: googleAuth?.accessToken,
+    //   idToken: googleAuth?.idToken,
+    // );
+    // final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+    //
+    // Check Firestore profile, then route to completeProfile or home
+
+    await Future.delayed(const Duration(seconds: 2)); // temp
+
+    if (!mounted) return;
+    setState(() => _isGoogleLoading = false);
+
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      AppRoutes.completeProfile,
+      (route) => false,
     );
   }
 
@@ -108,7 +123,6 @@ class _SignUpScreenState extends State<SignUpScreen>
       backgroundColor: AppColors.bg,
       body: Stack(
         children: [
-          // Background glow
           Container(
             decoration: const BoxDecoration(
               gradient: RadialGradient(
@@ -129,28 +143,46 @@ class _SignUpScreenState extends State<SignUpScreen>
                 opacity: _fadeAnimation,
                 child: Column(
                   children: [
-                    // Header
                     Padding(
                       padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
                       child: Row(
                         children: [
-                          _BackButton(
-                            onTap: () => Navigator.pop(context),
-                          ),
+                          _BackButton(onTap: () => Navigator.pop(context)),
                         ],
                       ),
                     ),
 
-                    // Scrollable body
                     Expanded(
                       child: SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(28, 24, 28, 40),
+                        padding: const EdgeInsets.fromLTRB(28, 32, 28, 40),
                         child: Form(
                           key: _formKey,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Title block
+                              Container(
+                                width: 56,
+                                height: 56,
+                                decoration: BoxDecoration(
+                                  color: AppColors.green,
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.green.withOpacity(0.3),
+                                      blurRadius: 20,
+                                      offset: const Offset(0, 6),
+                                    ),
+                                  ],
+                                ),
+                                child: const Icon(
+                                  Icons.location_on_rounded,
+                                  color: Colors.black,
+                                  size: 28,
+                                ),
+                              ),
+
+                              const SizedBox(height: 24),
+
                               Text(
                                 'Create\nyour account.',
                                 style: AppTextStyles.displayMedium,
@@ -166,35 +198,22 @@ class _SignUpScreenState extends State<SignUpScreen>
 
                               const SizedBox(height: 36),
 
-                              // Full name
-                              _FieldLabel(label: 'Full Name'),
-                              const SizedBox(height: 8),
-                              _AppTextField(
-                                controller: _nameController,
-                                hint: 'e.g. Lucky Amiara',
-                                prefixIcon: Icons.person_outline_rounded,
-                                keyboardType: TextInputType.name,
-                                validator: (val) {
-                                  if (val == null || val.trim().isEmpty) {
-                                    return 'Please enter your name';
-                                  }
-                                  if (val.trim().length < 2) {
-                                    return 'Name is too short';
-                                  }
-                                  return null;
-                                },
-                              ),
-
-                              const SizedBox(height: 20),
-
-                              // Phone number
                               _FieldLabel(label: 'Phone Number'),
                               const SizedBox(height: 8),
-                              _AppTextField(
+                              TextFormField(
                                 controller: _phoneController,
-                                hint: '080XXXXXXXX',
-                                prefixIcon: Icons.phone_outlined,
                                 keyboardType: TextInputType.phone,
+                                style: AppTextStyles.bodyMedium.copyWith(
+                                  color: AppColors.textPrimary,
+                                ),
+                                decoration: const InputDecoration(
+                                  hintText: '080XXXXXXXX',
+                                  prefixIcon: Icon(
+                                    Icons.phone_outlined,
+                                    color: AppColors.textMuted,
+                                    size: 20,
+                                  ),
+                                ),
                                 validator: (val) {
                                   if (val == null || val.trim().isEmpty) {
                                     return 'Please enter your phone number';
@@ -206,67 +225,55 @@ class _SignUpScreenState extends State<SignUpScreen>
                                 },
                               ),
 
-                              const SizedBox(height: 20),
-
-                              // State
-                              _FieldLabel(label: 'State of Residence'),
                               const SizedBox(height: 8),
-                              _StateDropdown(
-                                states: _nigerianStates,
-                                selectedState: _selectedState,
-                                onChanged: (val) =>
-                                    setState(() => _selectedState = val),
+
+                              Text(
+                                'We\'ll send a 6-digit code to verify it\'s you.',
+                                style: AppTextStyles.caption,
                               ),
 
-                              const SizedBox(height: 20),
+                              const SizedBox(height: 28),
 
-                              // Password
-                              _FieldLabel(label: 'Password'),
-                              const SizedBox(height: 8),
-                              _AppTextField(
-                                controller: _passwordController,
-                                hint: 'Min. 8 characters',
-                                prefixIcon: Icons.lock_outline_rounded,
-                                obscureText: _obscurePassword,
-                                suffixIcon: GestureDetector(
-                                  onTap: () => setState(
-                                    () => _obscurePassword = !_obscurePassword,
-                                  ),
-                                  child: Icon(
-                                    _obscurePassword
-                                        ? Icons.visibility_off_outlined
-                                        : Icons.visibility_outlined,
-                                    color: AppColors.textMuted,
-                                    size: 20,
-                                  ),
-                                ),
-                                validator: (val) {
-                                  if (val == null || val.isEmpty) {
-                                    return 'Please enter a password';
-                                  }
-                                  if (val.length < 8) {
-                                    return 'Password must be at least 8 characters';
-                                  }
-                                  return null;
-                                },
-                              ),
-
-                              const SizedBox(height: 12),
-
-                              // Terms notice
-                              _TermsNotice(),
-
-                              const SizedBox(height: 32),
-
-                              // Submit button
                               _SubmitButton(
                                 isLoading: _isLoading,
-                                onTap: _submit,
+                                label: 'Send Code',
+                                onTap: _sendOtp,
                               ),
 
-                              const SizedBox(height: 20),
+                              const SizedBox(height: 24),
 
-                              // Sign in link
+                              Row(
+                                children: [
+                                  const Expanded(
+                                    child: Divider(
+                                      color: AppColors.border,
+                                      thickness: 1,
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12),
+                                    child: Text('or', style: AppTextStyles.caption),
+                                  ),
+                                  const Expanded(
+                                    child: Divider(
+                                      color: AppColors.border,
+                                      thickness: 1,
+                                    ),
+                                  ),
+                                ],
+                              ),
+
+                              const SizedBox(height: 24),
+
+                              _GoogleSignInButton(
+                                isLoading: _isGoogleLoading,
+                                label: 'Continue with Google',
+                                onTap: _continueWithGoogle,
+                              ),
+
+                              const SizedBox(height: 28),
+
                               Center(
                                 child: GestureDetector(
                                   onTap: () => Navigator.pushNamed(
@@ -280,8 +287,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                                       children: [
                                         TextSpan(
                                           text: 'Sign In',
-                                          style:
-                                              AppTextStyles.bodySmall.copyWith(
+                                          style: AppTextStyles.bodySmall.copyWith(
                                             color: AppColors.green,
                                             fontWeight: FontWeight.w600,
                                           ),
@@ -308,11 +314,103 @@ class _SignUpScreenState extends State<SignUpScreen>
 }
 
 // ─────────────────────────────────────────────
-// BACK BUTTON
+// GOOGLE SIGN IN BUTTON
+// ─────────────────────────────────────────────
+class _GoogleSignInButton extends StatelessWidget {
+  final bool isLoading;
+  final String label;
+  final VoidCallback onTap;
+
+  const _GoogleSignInButton({
+    required this.isLoading,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: isLoading ? null : onTap,
+      child: Container(
+        height: 52,
+        decoration: BoxDecoration(
+          color: AppColors.surface2,
+          borderRadius: BorderRadius.circular(100),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Center(
+          child: isLoading
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    color: AppColors.green,
+                    strokeWidth: 2.5,
+                  ),
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 20,
+                      height: 20,
+                      decoration: const BoxDecoration(shape: BoxShape.circle),
+                      child: CustomPaint(painter: _GoogleIconPainter()),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      label,
+                      style: AppTextStyles.labelLarge.copyWith(
+                        color: AppColors.textPrimary,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GoogleIconPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+
+    final segments = [
+      (0.0, 0.5, const Color(0xFF4285F4)),
+      (0.5, 0.75, const Color(0xFF34A853)),
+      (0.75, 0.875, const Color(0xFFFBBC05)),
+      (0.875, 1.0, const Color(0xFFEA4335)),
+    ];
+
+    for (final seg in segments) {
+      final paint = Paint()
+        ..color = seg.$3
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3;
+
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius - 1.5),
+        seg.$1 * 2 * 3.14159,
+        (seg.$2 - seg.$1) * 2 * 3.14159,
+        false,
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// ─────────────────────────────────────────────
+// SHARED WIDGETS
 // ─────────────────────────────────────────────
 class _BackButton extends StatelessWidget {
   final VoidCallback onTap;
-
   const _BackButton({required this.onTap});
 
   @override
@@ -337,12 +435,8 @@ class _BackButton extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────
-// FIELD LABEL
-// ─────────────────────────────────────────────
 class _FieldLabel extends StatelessWidget {
   final String label;
-
   const _FieldLabel({required this.label});
 
   @override
@@ -357,144 +451,16 @@ class _FieldLabel extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────
-// TEXT FIELD
-// ─────────────────────────────────────────────
-class _AppTextField extends StatelessWidget {
-  final TextEditingController controller;
-  final String hint;
-  final IconData prefixIcon;
-  final TextInputType keyboardType;
-  final bool obscureText;
-  final Widget? suffixIcon;
-  final String? Function(String?)? validator;
-
-  const _AppTextField({
-    required this.controller,
-    required this.hint,
-    required this.prefixIcon,
-    this.keyboardType = TextInputType.text,
-    this.obscureText = false,
-    this.suffixIcon,
-    this.validator,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      obscureText: obscureText,
-      style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textPrimary),
-      validator: validator,
-      decoration: InputDecoration(
-        hintText: hint,
-        prefixIcon: Icon(prefixIcon, color: AppColors.textMuted, size: 20),
-        suffixIcon: suffixIcon,
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────
-// STATE DROPDOWN
-// ─────────────────────────────────────────────
-class _StateDropdown extends StatelessWidget {
-  final List<String> states;
-  final String? selectedState;
-  final ValueChanged<String?> onChanged;
-
-  const _StateDropdown({
-    required this.states,
-    required this.selectedState,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface2,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: selectedState,
-          hint: Row(
-            children: [
-              const Icon(Icons.location_on_outlined,
-                  color: AppColors.textMuted, size: 20),
-              const SizedBox(width: 10),
-              Text(
-                'Select your state',
-                style: AppTextStyles.bodyMedium
-                    .copyWith(color: AppColors.textMuted),
-              ),
-            ],
-          ),
-          icon: const Icon(Icons.keyboard_arrow_down_rounded,
-              color: AppColors.textMuted),
-          dropdownColor: AppColors.surface2,
-          isExpanded: true,
-          style:
-              AppTextStyles.bodyMedium.copyWith(color: AppColors.textPrimary),
-          items: states.map((state) {
-            return DropdownMenuItem(
-              value: state,
-              child: Text(state),
-            );
-          }).toList(),
-          onChanged: onChanged,
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────
-// TERMS NOTICE
-// ─────────────────────────────────────────────
-class _TermsNotice extends StatelessWidget {
-  const _TermsNotice();
-
-  @override
-  Widget build(BuildContext context) {
-    return RichText(
-      text: TextSpan(
-        text: 'By creating an account, you agree to our ',
-        style: AppTextStyles.caption.copyWith(height: 1.6),
-        children: [
-          TextSpan(
-            text: 'Terms of Service',
-            style: AppTextStyles.caption.copyWith(
-              color: AppColors.green,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const TextSpan(text: ' and '),
-          TextSpan(
-            text: 'Privacy Policy.',
-            style: AppTextStyles.caption.copyWith(
-              color: AppColors.green,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────
-// SUBMIT BUTTON
-// ─────────────────────────────────────────────
 class _SubmitButton extends StatelessWidget {
   final bool isLoading;
+  final String label;
   final VoidCallback onTap;
 
-  const _SubmitButton({required this.isLoading, required this.onTap});
+  const _SubmitButton({
+    required this.isLoading,
+    required this.label,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -529,10 +495,8 @@ class _SubmitButton extends StatelessWidget {
                   ),
                 )
               : Text(
-                  'Create Account',
-                  style: AppTextStyles.labelLarge.copyWith(
-                    color: Colors.black,
-                  ),
+                  label,
+                  style: AppTextStyles.labelLarge.copyWith(color: Colors.black),
                 ),
         ),
       ),

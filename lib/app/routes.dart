@@ -5,6 +5,8 @@ import '../features/auth/screens/splash_screen.dart';
 import '../features/auth/screens/onboarding_screen.dart';
 import '../features/auth/screens/signin_screen.dart';
 import '../features/auth/screens/signup_screen.dart';
+import '../features/auth/screens/otp_screen.dart';
+import '../features/auth/screens/complete_profile_screen.dart';
 
 // Map
 import '../features/map/screens/home_screen.dart';
@@ -32,6 +34,8 @@ class AppRoutes {
   static const String onboarding = '/onboarding';
   static const String signIn = '/sign-in';
   static const String signUp = '/sign-up';
+  static const String otp = '/otp';
+  static const String completeProfile = '/complete-profile';
 
   // Core
   static const String home = '/home';
@@ -49,11 +53,13 @@ class AppRoutes {
   // Verified
   static const String verifiedReporter = '/verified-reporter';
 
+  // Static routes (no arguments needed)
   static Map<String, WidgetBuilder> get routes => {
     splash: (_) => const SplashScreen(),
     onboarding: (_) => const OnboardingScreen(),
     signIn: (_) => const SignInScreen(),
     signUp: (_) => const SignUpScreen(),
+    completeProfile: (_) => const CompleteProfileScreen(),
     home: (_) => const HomeScreen(),
     alerts: (_) => const AlertsScreen(),
     alertDetail: (_) => const AlertDetailScreen(),
@@ -65,4 +71,17 @@ class AppRoutes {
     language: (_) => const LanguageScreen(),
     verifiedReporter: (_) => const VerifiedReporterScreen(),
   };
+
+  // Dynamic route — OTP screen needs phoneNumber + verificationId arguments
+  static Route<dynamic> generateOtpRoute({
+    required String phoneNumber,
+    required String verificationId,
+  }) {
+    return MaterialPageRoute(
+      builder: (_) => OtpScreen(
+        phoneNumber: phoneNumber,
+        verificationId: verificationId,
+      ),
+    );
+  }
 }

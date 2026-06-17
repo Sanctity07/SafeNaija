@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'app/theme.dart';
 import 'app/routes.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   SystemChrome.setSystemUIOverlayStyle(
@@ -16,6 +16,7 @@ void main() {
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
   ]);
+   await Future.delayed(Duration.zero);
 
   runApp(const SafeNaijaApp());
 }

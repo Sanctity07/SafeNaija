@@ -13,10 +13,9 @@ class _SignInScreenState extends State<SignInScreen>
     with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _phoneController = TextEditingController();
-  final _passwordController = TextEditingController();
 
-  bool _obscurePassword = true;
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
 
   late AnimationController _entryController;
   late Animation<Offset> _slideAnimation;
@@ -48,35 +47,46 @@ class _SignInScreenState extends State<SignInScreen>
   @override
   void dispose() {
     _phoneController.dispose();
-    _passwordController.dispose();
     _entryController.dispose();
     super.dispose();
   }
 
-  void _submit() async {
+  Future<void> _sendOtp() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 1500)); // temp
+
+    // TODO: Hook up FirebaseAuth.verifyPhoneNumber (same as Sign Up)
+
+    await Future.delayed(const Duration(seconds: 1)); // temp
+
+    if (!mounted) return;
     setState(() => _isLoading = false);
 
-    if (mounted) {
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        AppRoutes.home,
-        (route) => false,
-      );
-    }
+    Navigator.push(
+      context,
+      AppRoutes.generateOtpRoute(
+        phoneNumber: _phoneController.text.trim(),
+        verificationId: 'temp-verification-id',
+      ),
+    );
   }
 
-  void _forgotPassword() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (_) => const _ForgotPasswordSheet(),
+  Future<void> _continueWithGoogle() async {
+    setState(() => _isGoogleLoading = true);
+
+    // TODO: Hook up GoogleSignIn + FirebaseAuth (same as Sign Up)
+    // Check Firestore profile: if exists -> home, else -> completeProfile
+
+    await Future.delayed(const Duration(seconds: 2)); // temp
+
+    if (!mounted) return;
+    setState(() => _isGoogleLoading = false);
+
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      AppRoutes.home,
+      (route) => false,
     );
   }
 
@@ -86,7 +96,6 @@ class _SignInScreenState extends State<SignInScreen>
       backgroundColor: AppColors.bg,
       body: Stack(
         children: [
-          // Background glow
           Container(
             decoration: const BoxDecoration(
               gradient: RadialGradient(
@@ -107,14 +116,11 @@ class _SignInScreenState extends State<SignInScreen>
                 opacity: _fadeAnimation,
                 child: Column(
                   children: [
-                    // Header
                     Padding(
                       padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
                       child: Row(
                         children: [
-                          _BackButton(
-                            onTap: () => Navigator.pop(context),
-                          ),
+                          _BackButton(onTap: () => Navigator.pop(context)),
                         ],
                       ),
                     ),
@@ -127,13 +133,12 @@ class _SignInScreenState extends State<SignInScreen>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Logo mark
                               Container(
-                                width: 48,
-                                height: 48,
+                                width: 56,
+                                height: 56,
                                 decoration: BoxDecoration(
                                   color: AppColors.green,
-                                  borderRadius: BorderRadius.circular(14),
+                                  borderRadius: BorderRadius.circular(16),
                                   boxShadow: [
                                     BoxShadow(
                                       color: AppColors.green.withOpacity(0.3),
@@ -145,20 +150,17 @@ class _SignInScreenState extends State<SignInScreen>
                                 child: const Icon(
                                   Icons.location_on_rounded,
                                   color: Colors.black,
-                                  size: 24,
+                                  size: 28,
                                 ),
                               ),
 
                               const SizedBox(height: 24),
 
-                              // Title
                               Text(
                                 'Welcome\nback.',
                                 style: AppTextStyles.displayMedium,
                               ),
-
                               const SizedBox(height: 8),
-
                               Text(
                                 'Sign in to stay connected\nto your community.',
                                 style: AppTextStyles.bodyMedium.copyWith(
@@ -167,16 +169,24 @@ class _SignInScreenState extends State<SignInScreen>
                                 ),
                               ),
 
-                              const SizedBox(height: 40),
+                              const SizedBox(height: 36),
 
-                              // Phone field
                               _FieldLabel(label: 'Phone Number'),
                               const SizedBox(height: 8),
-                              _AppTextField(
+                              TextFormField(
                                 controller: _phoneController,
-                                hint: '080XXXXXXXX',
-                                prefixIcon: Icons.phone_outlined,
                                 keyboardType: TextInputType.phone,
+                                style: AppTextStyles.bodyMedium.copyWith(
+                                  color: AppColors.textPrimary,
+                                ),
+                                decoration: const InputDecoration(
+                                  hintText: '080XXXXXXXX',
+                                  prefixIcon: Icon(
+                                    Icons.phone_outlined,
+                                    color: AppColors.textMuted,
+                                    size: 20,
+                                  ),
+                                ),
                                 validator: (val) {
                                   if (val == null || val.trim().isEmpty) {
                                     return 'Please enter your phone number';
@@ -188,66 +198,23 @@ class _SignInScreenState extends State<SignInScreen>
                                 },
                               ),
 
-                              const SizedBox(height: 20),
-
-                              // Password field
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  _FieldLabel(label: 'Password'),
-                                  GestureDetector(
-                                    onTap: _forgotPassword,
-                                    child: Text(
-                                      'Forgot password?',
-                                      style: AppTextStyles.caption.copyWith(
-                                        color: AppColors.green,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
                               const SizedBox(height: 8),
-                              _AppTextField(
-                                controller: _passwordController,
-                                hint: 'Enter your password',
-                                prefixIcon: Icons.lock_outline_rounded,
-                                obscureText: _obscurePassword,
-                                suffixIcon: GestureDetector(
-                                  onTap: () => setState(
-                                    () => _obscurePassword = !_obscurePassword,
-                                  ),
-                                  child: Icon(
-                                    _obscurePassword
-                                        ? Icons.visibility_off_outlined
-                                        : Icons.visibility_outlined,
-                                    color: AppColors.textMuted,
-                                    size: 20,
-                                  ),
-                                ),
-                                validator: (val) {
-                                  if (val == null || val.isEmpty) {
-                                    return 'Please enter your password';
-                                  }
-                                  if (val.length < 8) {
-                                    return 'Password must be at least 8 characters';
-                                  }
-                                  return null;
-                                },
+
+                              Text(
+                                'We\'ll send a 6-digit code to verify it\'s you.',
+                                style: AppTextStyles.caption,
                               ),
 
-                              const SizedBox(height: 36),
+                              const SizedBox(height: 28),
 
-                              // Submit button
                               _SubmitButton(
                                 isLoading: _isLoading,
-                                onTap: _submit,
+                                label: 'Send Code',
+                                onTap: _sendOtp,
                               ),
 
                               const SizedBox(height: 24),
 
-                              // Divider
                               Row(
                                 children: [
                                   const Expanded(
@@ -259,10 +226,7 @@ class _SignInScreenState extends State<SignInScreen>
                                   Padding(
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 12),
-                                    child: Text(
-                                      'or',
-                                      style: AppTextStyles.caption,
-                                    ),
+                                    child: Text('or', style: AppTextStyles.caption),
                                   ),
                                   const Expanded(
                                     child: Divider(
@@ -275,12 +239,14 @@ class _SignInScreenState extends State<SignInScreen>
 
                               const SizedBox(height: 24),
 
-                              // Google sign in
-                              _GoogleSignInButton(),
+                              _GoogleSignInButton(
+                                isLoading: _isGoogleLoading,
+                                label: 'Continue with Google',
+                                onTap: _continueWithGoogle,
+                              ),
 
                               const SizedBox(height: 28),
 
-                              // Sign up link
                               Center(
                                 child: GestureDetector(
                                   onTap: () => Navigator.pushNamed(
@@ -294,8 +260,7 @@ class _SignInScreenState extends State<SignInScreen>
                                       children: [
                                         TextSpan(
                                           text: 'Create one',
-                                          style:
-                                              AppTextStyles.bodySmall.copyWith(
+                                          style: AppTextStyles.bodySmall.copyWith(
                                             color: AppColors.green,
                                             fontWeight: FontWeight.w600,
                                           ),
@@ -322,15 +287,23 @@ class _SignInScreenState extends State<SignInScreen>
 }
 
 // ─────────────────────────────────────────────
-// GOOGLE SIGN IN BUTTON
+// GOOGLE SIGN IN BUTTON (identical structure to Sign Up)
 // ─────────────────────────────────────────────
 class _GoogleSignInButton extends StatelessWidget {
-  const _GoogleSignInButton();
+  final bool isLoading;
+  final String label;
+  final VoidCallback onTap;
+
+  const _GoogleSignInButton({
+    required this.isLoading,
+    required this.label,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () {},
+      onTap: isLoading ? null : onTap,
       child: Container(
         height: 52,
         decoration: BoxDecoration(
@@ -338,46 +311,52 @@ class _GoogleSignInButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(100),
           border: Border.all(color: AppColors.border),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Google G icon
-            Container(
-              width: 20,
-              height: 20,
-              decoration: const BoxDecoration(shape: BoxShape.circle),
-              child: CustomPaint(painter: _GoogleIconPainter()),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              'Continue with Google',
-              style: AppTextStyles.labelLarge.copyWith(
-                color: AppColors.textPrimary,
-                fontSize: 13,
-              ),
-            ),
-          ],
+        child: Center(
+          child: isLoading
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    color: AppColors.green,
+                    strokeWidth: 2.5,
+                  ),
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 20,
+                      height: 20,
+                      decoration: const BoxDecoration(shape: BoxShape.circle),
+                      child: CustomPaint(painter: _GoogleIconPainter()),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      label,
+                      style: AppTextStyles.labelLarge.copyWith(
+                        color: AppColors.textPrimary,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
         ),
       ),
     );
   }
 }
 
-// ─────────────────────────────────────────────
-// GOOGLE ICON PAINTER
-// ─────────────────────────────────────────────
 class _GoogleIconPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width / 2;
 
-    // Draw G segments
     final segments = [
-      (0.0, 0.5, const Color(0xFF4285F4)),   // blue
-      (0.5, 0.75, const Color(0xFF34A853)),  // green
-      (0.75, 0.875, const Color(0xFFFBBC05)), // yellow
-      (0.875, 1.0, const Color(0xFFEA4335)), // red
+      (0.0, 0.5, const Color(0xFF4285F4)),
+      (0.5, 0.75, const Color(0xFF34A853)),
+      (0.75, 0.875, const Color(0xFFFBBC05)),
+      (0.875, 1.0, const Color(0xFFEA4335)),
     ];
 
     for (final seg in segments) {
@@ -401,158 +380,7 @@ class _GoogleIconPainter extends CustomPainter {
 }
 
 // ─────────────────────────────────────────────
-// FORGOT PASSWORD BOTTOM SHEET
-// ─────────────────────────────────────────────
-class _ForgotPasswordSheet extends StatefulWidget {
-  const _ForgotPasswordSheet();
-
-  @override
-  State<_ForgotPasswordSheet> createState() => _ForgotPasswordSheetState();
-}
-
-class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
-  final _controller = TextEditingController();
-  bool _sent = false;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _send() async {
-    if (_controller.text.trim().length < 10) return;
-    await Future.delayed(const Duration(milliseconds: 800));
-    setState(() => _sent = true);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        24,
-        24,
-        24,
-        MediaQuery.of(context).viewInsets.bottom + 32,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Handle
-          Center(
-            child: Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 24),
-
-          if (!_sent) ...[
-            Text(
-              'Reset Password',
-              style: AppTextStyles.headingLarge,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Enter your phone number and we\'ll\nsend a reset code.',
-              style: AppTextStyles.bodySmall.copyWith(height: 1.6),
-            ),
-            const SizedBox(height: 24),
-            TextFormField(
-              controller: _controller,
-              keyboardType: TextInputType.phone,
-              style: AppTextStyles.bodyMedium
-                  .copyWith(color: AppColors.textPrimary),
-              decoration: InputDecoration(
-                hintText: '080XXXXXXXX',
-                hintStyle: AppTextStyles.bodyMedium
-                    .copyWith(color: AppColors.textMuted),
-                prefixIcon: const Icon(Icons.phone_outlined,
-                    color: AppColors.textMuted, size: 20),
-              ),
-            ),
-            const SizedBox(height: 20),
-            GestureDetector(
-              onTap: _send,
-              child: Container(
-                height: 52,
-                decoration: BoxDecoration(
-                  color: AppColors.green,
-                  borderRadius: BorderRadius.circular(100),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.green.withOpacity(0.3),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                child: Center(
-                  child: Text(
-                    'Send Reset Code',
-                    style: AppTextStyles.labelLarge
-                        .copyWith(color: Colors.black),
-                  ),
-                ),
-              ),
-            ),
-          ] else ...[
-            // Success state
-            Center(
-              child: Column(
-                children: [
-                  Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      color: AppColors.greenGlow,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                          color: AppColors.green.withOpacity(0.3)),
-                    ),
-                    child: const Icon(
-                      Icons.check_rounded,
-                      color: AppColors.green,
-                      size: 28,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text('Code Sent!', style: AppTextStyles.headingMedium),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Check your SMS for the reset code.',
-                    style: AppTextStyles.bodySmall,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 20),
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Text(
-                      'Done',
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        color: AppColors.green,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────
-// REUSABLE WIDGETS
+// SHARED WIDGETS
 // ─────────────────────────────────────────────
 class _BackButton extends StatelessWidget {
   final VoidCallback onTap;
@@ -596,47 +424,16 @@ class _FieldLabel extends StatelessWidget {
   }
 }
 
-class _AppTextField extends StatelessWidget {
-  final TextEditingController controller;
-  final String hint;
-  final IconData prefixIcon;
-  final TextInputType keyboardType;
-  final bool obscureText;
-  final Widget? suffixIcon;
-  final String? Function(String?)? validator;
-
-  const _AppTextField({
-    required this.controller,
-    required this.hint,
-    required this.prefixIcon,
-    this.keyboardType = TextInputType.text,
-    this.obscureText = false,
-    this.suffixIcon,
-    this.validator,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      obscureText: obscureText,
-      style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textPrimary),
-      validator: validator,
-      decoration: InputDecoration(
-        hintText: hint,
-        prefixIcon: Icon(prefixIcon, color: AppColors.textMuted, size: 20),
-        suffixIcon: suffixIcon,
-      ),
-    );
-  }
-}
-
 class _SubmitButton extends StatelessWidget {
   final bool isLoading;
+  final String label;
   final VoidCallback onTap;
 
-  const _SubmitButton({required this.isLoading, required this.onTap});
+  const _SubmitButton({
+    required this.isLoading,
+    required this.label,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -671,10 +468,8 @@ class _SubmitButton extends StatelessWidget {
                   ),
                 )
               : Text(
-                  'Sign In',
-                  style: AppTextStyles.labelLarge.copyWith(
-                    color: Colors.black,
-                  ),
+                  label,
+                  style: AppTextStyles.labelLarge.copyWith(color: Colors.black),
                 ),
         ),
       ),
